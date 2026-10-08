@@ -64,9 +64,11 @@
 | 檔案 | 用途 |
 |---|---|
 | `AfkKeeper.cs` | 全部原始碼（單檔） |
-| `AfkKeeper.exe` | 編譯產物，雙擊即用（約 16 KB） |
+| `AfkKeeper.exe` | 編譯產物，雙擊即用（含自訂圖示） |
+| `icon/Odavido123.webp` | 原始圖示圖檔 |
+| `icon/app.ico` | 由 Odavido123.webp 轉出的多尺寸 Windows 圖示檔 |
 | `app.manifest` | 一般權限執行 (asInvoker)、PerMonitorV2 高 DPI |
-| `build.bat` | 重新編譯用（呼叫內建 csc） |
+| `build.bat` | 重新編譯用（呼叫內建 csc，含圖示與清單） |
 | `history.md` | 本檔 |
 
 ---
@@ -77,7 +79,7 @@
 
 ```bat
 C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe /nologo /target:winexe /platform:x64 /optimize+ ^
-  /out:AfkKeeper.exe /win32manifest:app.manifest ^
+  /out:AfkKeeper.exe /win32manifest:app.manifest /win32icon:icon\app.ico ^
   /reference:System.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll ^
   AfkKeeper.cs
 ```
@@ -90,7 +92,7 @@ C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe /nologo /target:winexe /
 
 GUI 欄位：
 - **目標視窗**：下拉選擇已開啟的視窗（自動嘗試選中 Roblox）；「刷新」重新列舉。
-- **送出按鍵**：空白鍵 / W / 上 / 下 / E / 數字0（預設空白鍵）。
+- **送出按鍵**：ESC（預設）/ 空白鍵 / W / 上 / 下 / E / 數字0。
 - **間隔 (秒)**：每隔幾秒送一次（預設 780 秒 = 13 分；最大 86400）。
 - **± 隨機 (秒)**：在間隔上下隨機抖動的秒數（預設 120）。實際間隔 = 間隔 ± 隨機。
 - **只在我閒置時送鍵**（勾選，推薦）：
@@ -118,6 +120,8 @@ GUI 欄位：
    - **ComboBox / NumericUpDown 寫死 `Height` 導致內容（箭頭、上下鈕）被壓掉** → 移除固定高度，讓控制項依字體自動算高。
    - 縮放模式 `AutoScaleMode.Dpi` → 改 **`AutoScaleMode.Font`**（WinForms 對文字最穩）。
 4. **間隔單位**：原本「分」，使用者要求改成 **「秒」**（連同 ± 隨機也改秒，換算邏輯拿掉 ×60）。
+5. **跨行程視窗擁有權限制**：Windows 不允許跨行程透過 `SetWindowLongPtr(GWLP_HWNDPARENT)` 設定擁有者，改採 `GetWindow(GW_HWNDPREV)` 配合動態 Z-Order 與 `SWP_NOACTIVATE`，精準在目標視窗上方貼合遮罩且不搶焦點、不干擾其他日常軟體操作。
+6. **視窗清單行程名稱顯示 `[?]` 問題**：.NET 內建 `Process.GetProcessById(pid).ProcessName` 在受保護行程或效能計數器未就緒時易擲出例外導致全部變成 `[?]`，進而導致設定檔無法正確還原選取。改寫為 Win32 原生 `QueryFullProcessImageName`（`PROCESS_QUERY_LIMITED_INFORMATION` 權限要求最低），穩定抓取完整執行檔名稱，並同步支援依視窗標題或行程名自動選中 Roblox。
 
 ---
 
@@ -127,19 +131,26 @@ GUI 欄位：
 - ✅ 送鍵流程運作（紀錄出現「已送出…並還原焦點」）。
 - ✅ GUI 版面已修到不裁切。
 - ✅ 間隔已改為「秒」。
+- ✅ **半透明防誤觸遮罩（OverlayForm）**：
+  - 運行時精準覆蓋於目標視窗上方，攔截滑鼠誤操作。
+  - **僅在目標視窗（如 Roblox）獲得焦點 (Focus) 時顯示遮罩**：切換至其他軟體操作時遮罩立即完全隱藏，絕不遮擋或干擾任何日常工作；後台定時送鍵期間亦自動抑制遮罩避免畫面閃爍。
+  - 自動隨目標視窗移動、縮放、最小化/還原同步隱藏與顯示。
+  - 遮罩具備兩大核心解鎖按鈕：
+    1. **「⏸ 暫時關閉」**：提供暫停 1 分鐘（預設）、15/30/60 分鐘或自訂分鐘數，解除遮罩讓使用者正常操作視窗；倒數結束後自動恢復掛機與遮罩，主視窗亦提供「提前恢復」按鈕。
+    2. **「⏰ 每日定時」**：可設定每天固定時段（如 01:00～07:00，支援跨夜）自動掛機與覆蓋遮罩，離峰時段自動解除遮罩供正常操作。
+- ✅ **設定自動儲存與載入**：目標程序、按鍵、間隔、隨機抖動、閒置條件、遮罩開關及每日排程自動持久化至 `afkkeeper_config.ini`。
 - ⏳ **尚未在 Roblox 內最終確認角色真的會跳**（待使用者回報；若沒跳，改用 VK+scan 並拉長按住時間）。
 
 ---
 
-## 9. 待辦 / 可加功能（使用者曾被詢問，尚未實作）
+## 9. 待辦 / 可加功能
 
-1. **記住上次設定**：把目標視窗(程序名)、按鍵、間隔等存到設定檔，下次開啟自動帶入。
-2. **開機自動啟動**：登入後自動於系統匣執行（捷徑放 Startup 資料夾或寫登錄機碼）。
-3. （若 Roblox 收不到鍵）送鍵方式備援：同時送 Virtual-Key 與 scan code、或拉長按住時間。
+1. **開機自動啟動**：登入後自動於系統匣執行（捷徑放 Startup 資料夾或寫登錄機碼）。
+2. （若 Roblox 收不到鍵）送鍵方式備援：同時送 Virtual-Key 與 scan code、或拉長按住時間。
 
 ---
 
-## 10. 給未來的 Claude：如何還原記憶
+## 10. 給未來的 Claude / AI 助理：如何還原記憶
 
 重灌後請：
 1. 讀這份 `history.md` 了解全部脈絡。
