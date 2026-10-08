@@ -1,5 +1,7 @@
 # AfkKeeper — 視窗定時送鍵工具
 
+> 📌 **專案來源**：本專案衍生自 [craig7351/Auto-click-to-windows](https://github.com/craig7351/Auto-click-to-windows) 開源專案。在此基礎上進行客製化增強與功能擴充（包含防誤觸半透明遮罩、右上角浮動延長按鈕、每日定時排程、ESC 鍵支援、精準行程名稱解析與專屬圖示等）。
+
 對**指定的已開啟視窗**，每隔自訂時間送出一個按鍵（預設空白鍵）。
 
 ## 特色
@@ -38,3 +40,12 @@ build.bat
 ## 注意
 
 本工具為純外部輸入模擬（不注入 DLL、不讀寫遊戲記憶體），但仍可能違反特定遊戲服務條款中關於掛機的規定。請自行評估風險，建議僅供個人使用。
+
+## 專案來源與致謝
+
+本專案衍生自 [craig7351/Auto-click-to-windows](https://github.com/craig7351/Auto-click-to-windows) 開源專案。感謝原作者 **craig7351** 提供優秀簡潔的底層定時送鍵與閒置偵測核心架構。
+
+## 授權條款 (License)
+
+本專案採用 [MIT License](LICENSE) 授權釋出。詳細內容請參閱 [LICENSE](LICENSE) 檔案。
+
